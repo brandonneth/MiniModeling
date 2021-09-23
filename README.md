@@ -352,4 +352,17 @@ conv_1_0_to_1_0 * b_conv_1_0_to_1_0
 Okay, so when the conversions are free, we get a_0_0_1, a_1_1_0, and the same for b. When the conversions cost 4, we get a_0_0_1 and a_1_0_1, so the conversion is too expensive. What about when the conversion is  3? Still no conversion. What about 2? Interestingly, we get a_0_1_0 and a_1_1_0. so it still does'nt want to do the conversion, but wants us to start with the worse layout.
 
 
+# Automating the Problem Setup
+
+Now we want to automate the modeling setup. Automating will require some more vigorous definition of terms and stuff for the variable subscripting. Let's see what we can do. 
+
+## Variable names
+
+We have some different types of variables. First, we have the layout variables for the computations, second, we have the layout variables for the conversions. Conversions occur between any adjacent computations. So we number our computations, then we have conversions that basically assume the number of the preceeding computation.
+
+So for computation i and data a with dimensionality n, the variable we introduce is 
+a_i_nperm, based on the layout ordering for that variable. For the conversion following this computation, we have the variable conv_a_i_nperm1_to_nperm2.
+
+So a good function for generating these variable names / declarations would take the computation number, the array name, and the dimensionality. It may be worthwhile to create variables for all arrays for all computations, even if the computation does'nt use the arary, because they won't show up in the objective function for the computations that don't use them. 
+
 
