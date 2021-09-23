@@ -365,4 +365,18 @@ a_i_nperm, based on the layout ordering for that variable. For the conversion fo
 
 So a good function for generating these variable names / declarations would take the computation number, the array name, and the dimensionality. It may be worthwhile to create variables for all arrays for all computations, even if the computation does'nt use the arary, because they won't show up in the objective function for the computations that don't use them. 
 
+## Constraints
+
+Let's enumerate the types of constraints we're applying here
+- one_layout_per_computation: each array can only have one layout per computation
+- one_conversion_per_conversion: each array can only have one conversion per conversion
+- computation_conversion_matching: each array layout for a computation matches the input layout for the following conversion
+- conversion_computation_matching: the output layout for an array's conversion matches the layout for the subsequent computation
+- nonnegative: all variables are greater than or equal to zero.
+
+What info do we need to generate a one_layout_per_computation constraint? The computation number, the array name, and the dimensionality. The sum of all the generated variables should be 1.
+
+Same for the one_conversion_per_conversion constraints.
+
+Should be the same for computation_conversion_matching. THis one's a little more complicated. For each of the computation layouts, we want to generate the conversion variables that have that input layout. Similar thing for the conversion_computation_matching.
 
