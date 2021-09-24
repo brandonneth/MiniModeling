@@ -380,3 +380,207 @@ Same for the one_conversion_per_conversion constraints.
 
 Should be the same for computation_conversion_matching. THis one's a little more complicated. For each of the computation layouts, we want to generate the conversion variables that have that input layout. Similar thing for the conversion_computation_matching.
 
+Nonnegative just takes all the names annd creates constraints for greater than 0. That ones easy.
+
+The function that creates all the constraints takes the number of computations and the name dimension pairs like the all name functions. 
+
+## Objective Function
+
+This is the most complicated part because it requires access details. Looking back on the diagram of transformation regarding the data layout and execution policies, we need to determine the relatioonship between the decision variable names, the loop ordering and the accesses.
+
+### A Detour to RAJA
+One problem I've discovered about the examples I used above is that they're in C++ pseudocode and not in RAJA pseudocode. Let's take another look at an example to see if that helps the understanding.
+
+Start with the kernel policies:
+```
+using KPOL_0_1 = KernelPolicy<
+  For<0, seq_exec,
+    For<1, seq_exec,
+      Lambda<0>
+    >
+  >
+>
+using KPOL_1_0 = KernelPolicy<
+  For<1, seq_exec,
+    For<0, seq_exec,
+      Lambda<0>
+    >
+  >
+>
+```
+
+The numbering on the kernel policies in the example will help us remember the nesting order when we use them. Our loops are over two dimensions, the bounds of which we define next.
+
+```
+auto segments = make_tuple(RangeSegment(0,N0), RangeSegment(0,N1));
+```
+
+Now we can use the policies and segments.
+
+```
+auto kernel1 = kernel<KPOL_0_1>(segments, [=](auto i, auto j) {
+  a(i0,i1) = b(i0,i1);
+});
+
+auto kernel2 = kernel<KPOL_1_0>(segments, [=](auto i, auto j) {
+  a(i0,i1) = b(i0,i1);
+});
+```
+
+These are the kernels from the third example above. Now lets continue with the analysis of the relationship between the nesting order, the accesses, and the decision variable names.
+
+### Back to the Objective Function
+
+Starting with just the first kernel, we have two accesses, `a(i0,i1)` and `b(i0,i1)`. We haven't chosen a layout for `a` or `b` yet, so we're thinking about these accesses in the "logical" space rather than the "concrete" space. Please take a look at the TransformationDiagram.pdf file for more information on these terms.
+
+When we talk about the access `a(i0,i1)`, we're talking about LogicalAccessArguments, because we're looking at it in terms of the lambda arguments. However, both the kernel policy and the variables are in terms of the AccessIndicies, so we may choose to instead think of the access in those terms, because in our information gathering, we always use the same lambda arguments, so its always `i0, i1, i2, ...`. 
+
+In the current model, the kernel policy is also not variable, so we know what nesting order transformation we're going to have. 
+
+So we have a little more formal of an understanding of the elements we're dealing with. But what exactly are we trying to figure out? Here are the two questions
+- What are the coefficients for each decision variable?
+- How do we calculate the values of those coefficients?
+
+### Coefficients
+
+Let's take the terms of the objective function we developed for this example and try to understand their meaning more generally. Here are the terms:
+```
+a_0_0_1 * coef_0_1
+a_0_1_0 * coef_1_0
+b_0_0_1 * coef_0_1
+b_0_1_0 * coef_1_0
+a_1_0_1 * coef_1_0
+a_1_1_0 * coef_0_1
+b_1_0_1 * coef_1_0
+b_1_1_0 * coef_0_1
+conv_0_1_to_0_1 * a_conv_0_1_to_0_1
+conv_0_1_to_1_0 * a_conv_0_1_to_1_0
+conv_1_0_to_0_1 * a_conv_1_0_to_0_1
+conv_1_0_to_1_0 * a_conv_1_0_to_1_0
+conv_0_1_to_0_1 * b_conv_0_1_to_0_1 
+conv_0_1_to_1_0 * b_conv_0_1_to_1_0 
+conv_1_0_to_0_1 * b_conv_1_0_to_0_1
+conv_1_0_to_1_0 * b_conv_1_0_to_1_0
+```
+
+Starting from the top, we have these two:
+```
+a_0_0_1 * coef_0_1
+a_0_1_0 * coef_1_0
+```
+What do they represent? In simple terms, the cost of the accesses to `a(i0, i1)` in the first computation when the layout for `a` is either (0,1) or (1,0). Now, from this example, and from the next 2 terms from the access to `b(i0,i1)`, it may seem like we just match the coefficient indexing to the access indexing. The next examples complicate this idea.
+
+For the second loop, we have the terms:
+```
+a_1_0_1 * coef_1_0
+a_1_1_0 * coef_0_1
+b_1_0_1 * coef_1_0
+b_1_1_0 * coef_0_1
+```
+Notice that the coefficient indexing and the access indexing do not match here. This is related to the fact that the access index orders do not match the kernel policy order. 
+
+So what's the procedure for selecting the right coefficient? 
+
+We know from the offset the identity LambdaParameters transformation L, the KernelPolicy nesting order transformation for the compututation K, and the LogicalAccessArguments A. We want to find the coefficient for a particular data layout choice D. My claim is that we use the coefficient based on S=D(K(L(A))). Let's explore why.
+
+#### Scoring Review
+
+First, we review what this value S means by way of the example from Report 9.1.2021. Effectively, it is a way to "normalize" an access by stripping out the abstraction of the lambda arguments, the kernel policy nesting, and the data layout. This will let us better compare two different layouts or kernel policies.
+
+For our example, the lambda for the kernel is
+```
+auto lam = [=](int nm, int d, int g, int z) {
+  ... = ... psi(d,g,z);
+}
+```
+the kernel policy is 
+```
+using KPOL = KernelPolicy<
+  For<2, parallel_exec,
+    For<1, parallel_exec,
+      For<0, parallel_exec,
+        For<3, seq_exec,
+          Lambda<0>
+        >      
+      >
+    >
+  >
+>;
+```
+and the data layout for our data `psi` is 
+```
+Layout(0,2,1);
+```
+
+- The LogicalAccessArguments are `A = (d,g,z)`. 
+- The LambdaParameters transformation maps the parameters to their indices: `L = {nm -> 0, d -> 1, g -> 2, z -> 3}`. 
+- The KernelPolicy transformation updates the indices to be the equivalent of the "normalized" order: `K = {2 -> 0, 1 -> 1, 0 -> 2, 3 -> 3}`.
+- The DataLayout transformation permutes whatever list its given to normalize for the layout ordering. Where the input types/values of LambdaParameters and KernelPolicy matter, DataLayout is a general permutation on any list, reordering the contents without regard for what they are. The first element stays in place, while the second and third elements swap. `D = Permutation(0,2,1)`
+
+So we start with our input `(d,g,z)`. Applying `L` gives `(1,2,3)`. Applying `K` gives `(1,0,3)`. Applying `D` gives `(1,3,0)`. This score means that with the given layout and nesting ordering, these accesses are in some sense equivalent to the accesses in this "normalized" loop nest:
+```
+for i0:
+  for i1:
+    for i2:
+      for i3:
+        a[i1][i3][i0]
+```
+
+Lets connect this to the coefficients for our decision variables. 
+
+#### Normalizing Accesses
+
+For our modeling, we want to estimate the cost of different choices of data layout. These costs are estimated using some collection of microbenchmarks. Thus, our objective is to create a set of microbenchmarks AND a mapping from choices to microbenchmarks. 
+
+One possible choice would be to benchmark every possible combination of loop nest orderings, data layouts, and access orderings. Then our mapping from choice to benchmark is simple: pick the benchmark that uses the relevant ordering, layout, and access. The problem here is that this creates lots and lots of benchmarks to run. 
+
+An better choice utilizes the concepts above to set the nesting and data layouts of our benchmarks constant and only change the access order. Then, we map the choice in data layout to the benchmark that is its normalized variant as described above. For the example above, the decision variable `psi_0_0_2_1`, which represents choosing the layout `(0,2,1)`, would have a coefficient determined by the microbenchmark that executes the normalized loop nest we created above. The decision variable `psi_0_0_1_2` which represents a different choice in layout, `(0,1,2)`, would have a different coefficient based on the normalized loop nest it leads to. 
+
+#### Coefficient Naming
+
+This approach of mapping decisions to their equivalent normalized loop nests is my selected approach. So far, we've been using coefficient names based on the access index order within the normalized nest, but this is insufficient. To see why, consider the following two normalized loop nests:
+```
+for i0:
+  for i1:
+    a[i0][i1]
+for i0:
+  for i1:
+    for i2:
+      a[i0][i1]
+```
+Both of these nests would be given the name `coef_0_1`. So the coefficient also needs to name its nest depth. These two loops would become `coef_d2_0_1` and `coef_d3_0_1` to denote they are depths 2 and 3, respectively. 
+
+For nesting depth `depth` and array dimensionality `num_dims`, what are the possible coefficient names? All of them will start with "coef_d", followed by the value of `depth` and then an underscore. For the end of the coefficients, we enumerate the possible choices of `num_dims` numbers from 0 to `depth-1`, inclusive, with repetition. This allows for accesses like `a[i0][i0]`.
+
+The function `all_coefficient_names` in `automating.py` generates all possible coefficient names for given maximum depth and dimensionality.
+
+#### Coefficient Values
+
+For each coefficient, we need the function that evaluates its value.
+The structure of the function should be something like:
+```
+template <typename VIEW>
+void coefficient_evaluation_d{NESTING_DEPTH}_{ACCESS_ORDER} (VIEW a, {BOUNDS_DECLARATIONS}) {
+  auto start = std::clock();
+  {FOR_LOOP_NESTING_START}
+  a({ACCESS_ARGUMENTS})= 0;
+  {FOR_LOOP_NESTING_STOP}
+  auto stop = std::clock();
+  auto t = stop - start;
+  std::cout << "coef_d{NESTING_DEPTH}_{ACCESS_ORDER} = " << t << std::endl ; 
+}
+```
+The invocation will look something like:
+```
+double * _a_d{NESTING_DEPTH}_{ACCESS_ORDER} = new double [{SIZE
+_COMPUTATION}];
+VIEW{NUMDIMS} a_d{NESTING_DEPTH}_{ACCESS_ORDER} (_a_d{NESTING_DEPTH}_{ACCESS_ORDER}, {DIM_SIZES});
+
+coefficient_evaluation_d{NESTING_DEPTH}_{ACCESS_ORDER}(a_d{NESTING_DEPTH}_{ACCESS_ORDER}, {NEST_SIZES})
+
+free(_a_d{NESTING_DEPTH}_{ACCESS_ORDER})
+```
+
+Functions to automate the generation of both of these things are found in automating.py
+
+
