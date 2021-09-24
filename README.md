@@ -581,6 +581,26 @@ coefficient_evaluation_d{NESTING_DEPTH}_{ACCESS_ORDER}(a_d{NESTING_DEPTH}_{ACCES
 free(_a_d{NESTING_DEPTH}_{ACCESS_ORDER})
 ```
 
-Functions to automate the generation of both of these things are found in automating.py
+Functions to automate the generation of both of these things are found in automating.py, as well as one to generate the whole .cpp file.
 
+THis is only for the ocmputation coefficients.
 
+### Objective Function Computation Terms
+
+Now that we can evaluate the coefficients and map our decision variables to those coefficients, we're ready to start building up our objective function.
+
+Lets break them into computation terms and conversion terms. We are yet to dive into the conversion coefficients, so lets just put those aside for now.
+
+We're handed, for each computation, a kernel policy nesting order and some number of accesses which each contain the arguments used to access the view and the identifier for the view. It also gives us the layout in use but we're choosing ourselves so we can disregard that for now.
+
+For each access, start by calculating the partial score by applying the identity LambdaParameter function and then the reordering defined by the computation's kernel policy. Call this partial score S. 
+
+Next, for each of the decision variables V for that view in that computation, extract the data layout permutation D. Apply D to S. Call the result T. Let n be the depth of the computation's nest. The coefficient for V is `coef_d$n_$T`.
+
+Sum the terms generated this way for all accesses in the entire program. That is the computation component of the objective function. 
+
+### Objective Function Conversion Terms
+
+We return now to the conversion portion of the objective function. The set of conversion coefficients is based on the product of permutations of each size. Conversion decision variables are mapped to coefficients directly by matching their layout inputs and outputs. 
+
+Evaluating the conversion coefficients is more complicated. It could be as easy as just evaluating the naive copy, as if it were juts any other function. But this would not be performance optimal. Instead, it may be that we try all possible execution policies for each and then pick the best policy. Alternatively, there may be existing capabilities, hardware or otherwise, for re-laying out the data in memory. For example, Tom mentioned something about CPU conversions doing it. 
