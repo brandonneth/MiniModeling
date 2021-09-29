@@ -603,4 +603,27 @@ Sum the terms generated this way for all accesses in the entire program. That is
 
 We return now to the conversion portion of the objective function. The set of conversion coefficients is based on the product of permutations of each size. Conversion decision variables are mapped to coefficients directly by matching their layout inputs and outputs. 
 
-Evaluating the conversion coefficients is more complicated. It could be as easy as just evaluating the naive copy, as if it were juts any other function. But this would not be performance optimal. Instead, it may be that we try all possible execution policies for each and then pick the best policy. Alternatively, there may be existing capabilities, hardware or otherwise, for re-laying out the data in memory. For example, Tom mentioned something about CPU conversions doing it. 
+Evaluating the conversion coefficients is more complicated. It could be as easy as just evaluating the naive copy, as if it were juts any other function. But this would not be performance optimal. Instead, it may be that we try all possible execution policies for each and then pick the best policy. Alternatively, there may be existing capabilities, hardware or otherwise, for re-laying out the data in memory. For example, Tom mentioned something about GPU transfers doing it. 
+
+So this creates a sort of multistep process. First, for each of the possible conversions, we figure out the best layout. Then, we use that cost as the coeficcient for the objective function. So we need a function that generates the function for the conversion call.
+
+Its going to be similar to the computation functions. But instead, we'll have two view arguments for the function. These views will have the same normalized layout because we've normalized out the layout and the nesting order. 
+
+So really this is boiling down to a similar kind of problem where instead of determining the best data layout for a fixed access order and nesting order, we want to determine the best nesting order for a fixed access order and data layout. So lets start our generating functions there. We have the input data layout and the output data layout. These are different from the access order. Lets start even lower with an example. We want to calculate the coefficient `conv_0_1_2_to_2_1_0`, which is the conversion coefficient for changing from the normal layout to the reverse of the normal layout `(0,1,2) to (2,1,0). One loop nest that does this conversion is:
+```
+for i0:
+  for i1:
+    for i2:
+      out(i2,i1,i0) = in(i0,i1,i2)
+```
+Note that here, both arrays have the same layout permuttaion (identity), even though they have different layouts.
+
+So for each of the permutations of the loop nests, ie, each of the possible nesting orders, we have the body `out({OUTLAYOUT}) = in({INLAYOUT})`.
+
+It does need to be said here that the conversion loops need not use only the first n dimensions. It could be a view with dimension N2xN3xN5 or something. I think a potential here would be to just have the extents be global variables. I'm going to do this. 
+
+I Also don't think its strictly necessary that I go back and update the other functions since i can pass teh global values as parameters. 
+
+Anyway, on to the invocation of the function. With the layouts and nesting order defined, I need to allocate the memory for the two arrays, create the two views, call the function, and free the memory. 
+
+Back to the topic of the N2xN3xN5 thing, thats actually not a problem bc its equivalent to having it be N0 N1 N2 and different values for the Ns. 
