@@ -37,22 +37,19 @@ def conversion_layout_variable_names(computation_number, array_name, array_dimen
 	return variable_names
 
 
-print(computation_layout_variable_names(0, 'a', 2))
-
-print(conversion_layout_variable_names(0, 'a' ,2))
-
 def all_variable_names(num_computations, name_dim_pairs):
 	names = []
 	for comp_num in range(0, num_computations):
 		for (name,dim) in name_dim_pairs:
 			names += computation_layout_variable_names(comp_num, name, dim)
-			names += conversion_layout_variable_names(comp_num, name, dim)
+			if(comp_num != num_computations-1):
+				names += conversion_layout_variable_names(comp_num, name, dim)
 	return names
 
 variables = ['a', 'b']
 dims = [2, 3]
 
-print(all_variable_names(2, zip(variables, dims)))
+
 
 def one_layout_per_computation(computation_number, array_name, array_dimensionality):
 
@@ -103,31 +100,26 @@ def conversion_computation_matching(conversion_number, array_name, array_dimensi
 		constraints += [comp_layout_variable + " == " + conv_sum]
 	return constraints
 
-def nonnegative(computation_number, array_name, array_dimensionality):
+def comp_nonnegative(computation_number, array_name, array_dimensionality):
 	variables = computation_layout_variable_names(computation_number, array_name, array_dimensionality)
-	variables += conversion_layout_variable_names(computation_number, array_name, array_dimensionality)
 
 	return [v + " >= 0" for v in variables]
 
+def conv_nonnegative(computation_number, array_name, array_dimensionality):
+	variables = conversion_layout_variable_names(computation_number, array_name, array_dimensionality)
 
-print(one_layout_per_computation(2, 'a', 3))
-print(one_conversion_per_conversion(2, 'a', 3))
-
-
-for c in computation_conversion_matching(1, 'a', 2):
-	print(c)
-
-for c in conversion_computation_matching(1, 'a', 2):
-	print(c)
+	return [v + " >= 0" for v in variables]
 
 def all_constraints(num_computations, name_dim_pairs):
 	constraints = []
 	for comp_num in range(0, num_computations):
 		for (name,dim) in name_dim_pairs:
 			constraints += one_layout_per_computation(comp_num, name, dim)
-			constraints += one_conversion_per_conversion(comp_num, name, dim)
-			constraints += computation_conversion_matching(comp_num, name, dim)
+
 			if comp_num != num_computations - 1:
 				constraints += conversion_computation_matching(comp_num, name, dim)
-			constraints += nonnegative(comp_num, name, dim)
+				constraints += one_conversion_per_conversion(comp_num, name, dim)
+				constraints += computation_conversion_matching(comp_num, name, dim)
+				constraints += conv_nonnegative(comp_num, name, dim)
+			constraints += comp_nonnegative(comp_num, name, dim)
 	return constraints

@@ -1,7 +1,7 @@
 
 import itertools
 
-def coefficient_name(nesting_depth, access_order):
+def computation_coefficient_name(nesting_depth, access_order):
 	order_strs = [str(a) for a in access_order]
 	order_str = '_'.join(order_strs) 
 	return 'coef_d' + str(nesting_depth) + "_" + order_str
@@ -18,21 +18,21 @@ def access_orders(nesting_depth, array_dimensionality):
 
 	return all_permuted_combos
 
-def coefficient_names(nesting_depth, array_dimensionality):
-	coef_names = [coefficient_name(nesting_depth, combo) for combo in access_orders(nesting_depth, array_dimensionality)]
+def computation_coefficient_names(nesting_depth, array_dimensionality):
+	coef_names = [computation_coefficient_name(nesting_depth, combo) for combo in access_orders(nesting_depth, array_dimensionality)]
 	return coef_names
 
 
 
 
-def all_coefficient_names(max_depth=5, max_dimensionality=5):
+def all_computation_coefficient_names(max_depth=5, max_dimensionality=5):
 	names = []
 	for d in range(1,max_depth+1):
 		for array_dimensionality in range(1,max_dimensionality+1):
-			names += coefficient_names(d, array_dimensionality)
+			names += computation_coefficient_names(d, array_dimensionality)
 	return names
 
-coef_names_2_2 = all_coefficient_names(max_depth=2, max_dimensionality=2)
+coef_names_2_2 = all_computation_coefficient_names(max_depth=2, max_dimensionality=2)
 
 print("All coefficient names for max depth = 2 max dimensionality = 2")
 for c in coef_names_2_2:
@@ -90,7 +90,7 @@ def computation_coefficient_function(nesting_depth, access_order):
 	loop_nest = for_loop_nesting_start(nesting_depth) + "\n" + '  ' * nesting_depth + access_statement(access_order) + "\n" + for_loop_nesting_end(nesting_depth)
 	stop_line = 'auto stop = std::clock();'
 	t_line = 'auto t = stop - start;'
-	print_line = 'std::cout << "{} = " << t << std::endl;'.format(coefficient_name(nesting_depth, access_order))
+	print_line = 'std::cout << "{} = " << t << std::endl;'.format(computation_coefficient_name(nesting_depth, access_order))
 
 	close_line = '}'
 
