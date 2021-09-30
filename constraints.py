@@ -1,50 +1,7 @@
-
+from names import *
 import itertools
 
 
-def permutation_to_name(perm):
-	strs = [str(i) for i in perm]
-	return "_".join(strs)
-
-def comp_layout_variable_name(computation_number, array_name, layout_perm):
-	perm_string = permutation_to_name(layout_perm)
-	return str(array_name) + "_" + str(computation_number) + "_" + perm_string
-
-
-def conv_layout_variable_name(computation_number, array_name, input_perm, output_perm):
-	p1 = permutation_to_name(input_perm)
-	p2 = permutation_to_name(output_perm)
-
-	return 'conv_' + str(array_name) + "_" + str(computation_number) + "_" + p1 + "_to_" + p2
-
-
-def computation_layout_variable_names(computation_number, array_name, array_dimensionality):
-	dim_index_tuple = tuple(range(0,array_dimensionality))
-	layout_permutations = list(itertools.permutations(dim_index_tuple))
-
-	
-
-	variable_names = [comp_layout_variable_name(computation_number, array_name, perm) for perm in layout_permutations]
-	return variable_names
-
-def conversion_layout_variable_names(computation_number, array_name, array_dimensionality):
-	dim_index_tuple = tuple(range(0,array_dimensionality))
-	layout_permutations = list(itertools.permutations(dim_index_tuple))
-
-	layout_pairs = itertools.product(layout_permutations, layout_permutations)
-
-	variable_names = [conv_layout_variable_name(computation_number, array_name, p[0], p[1]) for p in layout_pairs]
-	return variable_names
-
-
-def all_variable_names(num_computations, name_dim_pairs):
-	names = []
-	for comp_num in range(0, num_computations):
-		for (name,dim) in name_dim_pairs:
-			names += computation_layout_variable_names(comp_num, name, dim)
-			if(comp_num != num_computations-1):
-				names += conversion_layout_variable_names(comp_num, name, dim)
-	return names
 
 variables = ['a', 'b']
 dims = [2, 3]
