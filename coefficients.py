@@ -4,32 +4,6 @@ import itertools
 from names import * 
 
 
-
-def access_orders(nesting_depth, array_dimensionality):
-	index_choices = list(range(0,nesting_depth))
-
-	unpermuted_combinations = set(itertools.combinations_with_replacement(index_choices, array_dimensionality))
-
-	permuted_combination_sets = [set(itertools.permutations(combo)) for combo in unpermuted_combinations]
-	
-	all_permuted_combos = itertools.chain.from_iterable(permuted_combination_sets)
-
-	return all_permuted_combos
-
-def computation_coefficient_names(nesting_depth, array_dimensionality):
-	coef_names = [computation_coefficient_name(nesting_depth, combo) for combo in access_orders(nesting_depth, array_dimensionality)]
-	return coef_names
-
-
-
-
-def all_computation_coefficient_names(max_depth=5, max_dimensionality=5):
-	names = []
-	for d in range(1,max_depth+1):
-		for array_dimensionality in range(1,max_dimensionality+1):
-			names += computation_coefficient_names(d, array_dimensionality)
-	return names
-
 coef_names_2_2 = all_computation_coefficient_names(max_depth=2, max_dimensionality=2)
 
 print("All coefficient names for max depth = 2 max dimensionality = 2")
@@ -246,4 +220,8 @@ def write_eval_file(filename, max_depth=3, max_dimensionality=3, psize = 1024):
 		f.write(file_text)
 
 write_eval_file('coef_eval_2_2.cpp', max_depth=2, max_dimensionality=2)
+
+
+
+
 

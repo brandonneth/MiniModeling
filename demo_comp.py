@@ -5,6 +5,7 @@ from coefficients import write_eval_file
 from objective import computation_objective_function
 import json
 
+from create_model import create_model
 def extract_kernel_data(filename):
 	with open(filename,'r') as f:
 		d = json.load(f)
@@ -36,9 +37,15 @@ print('Variables:')
 for v in variables:
 	print(v)
 
-print("\nconstraints")
+print("\nConstraints:")
 for c in constraints:
 	print(c)
 
 print("Objective Function: ", objective_function)
 
+
+model = create_model([kernel_data])
+
+print("Writing Model File")
+with open('demo_comp_model.py', 'w') as f:
+	f.write(model)

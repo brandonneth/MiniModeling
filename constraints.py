@@ -2,12 +2,6 @@ from names import *
 import itertools
 
 
-
-variables = ['a', 'b']
-dims = [2, 3]
-
-
-
 def one_layout_per_computation(computation_number, array_name, array_dimensionality):
 
 	variables = computation_layout_variable_names(computation_number, array_name, array_dimensionality)
