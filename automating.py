@@ -212,11 +212,13 @@ def access_statement(access_order):
 	access_expression = ','.join(ivars)
 	return 'a(' + access_expression + ') = 0;'
 
+def computation_coefficient_function_name(nesting_depth, access_order):
+	return 'computation_coefficient_evaluation_d{}_{}'.format(nesting_depth, order_str)
 def computation_coefficient_function(nesting_depth, access_order):
 	order_str = "_".join([str(a) for a in access_order])
 
 	template_line = 'template <typename VIEW>'
-	func_name_line = 'void computation_coefficient_evaluation_d{}_{}'.format(nesting_depth, order_str)
+	func_name_line = 'void ' + computation_coefficient_function_name(nesting_depth, access_order)
 	params_line = '(VIEW a, ' + bounds_declarations(nesting_depth) + ') {'	
 
 	start_line = 'auto start = std::clock();'
@@ -265,7 +267,8 @@ def func_invocation(nesting_depth, access_order):
 	ns = ['N' + str(i) for i in range(0,nesting_depth)]
 	nest_sizes = ', '.join(ns)
 
-	return 'coefficient_evaluation_d{}_{}({},{});'.format(nesting_depth, order_str, vname, nest_sizes)
+	func_name = computation_coefficient_function_name(nesting_depth, access_order)
+	return func_name + '({},{});'.format(vname, nest_sizes)
 
 def computation_coefficient_function_invocation(nesting_depth, access_order):
 	alloc_line = memory_allocation(nesting_depth, access_order)
