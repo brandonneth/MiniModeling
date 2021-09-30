@@ -213,6 +213,7 @@ def access_statement(access_order):
 	return 'a(' + access_expression + ') = 0;'
 
 def computation_coefficient_function_name(nesting_depth, access_order):
+	order_str = "_".join([str(a) for a in access_order])
 	return 'computation_coefficient_evaluation_d{}_{}'.format(nesting_depth, order_str)
 def computation_coefficient_function(nesting_depth, access_order):
 	order_str = "_".join([str(a) for a in access_order])
