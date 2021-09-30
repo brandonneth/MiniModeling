@@ -354,6 +354,7 @@ def write_eval_file(filename, max_depth=3, max_dimensionality=3, psize = 1024):
 	includes = ['<iostream>', '<ctime>', '"RAJA.hpp"']
 	header = '\n'.join(['#include ' + i for i in includes])
 
+	view_defs = '\n'.join([view_typedef(i) for i in range(1, max_dimensionality+1)])
 	comp_defs = ''
 	for nesting_depth in range(1,max_depth+1):
 		for array_dimensionality in range(1, max_dimensionality+1):
@@ -390,7 +391,7 @@ def write_eval_file(filename, max_depth=3, max_dimensionality=3, psize = 1024):
 		for (in_layout,out_layout,nesting_order) in combos:
 			conv_calls += conversion_coefficient_function_invocation(in_layout, out_layout, nesting_order) + "\n\n"
 
-	file_text = '\n'.join([header, n_defs, comp_defs, conv_defs, main_def,  comp_calls, conv_calls, '}'])
+	file_text = '\n'.join([header, n_defs, view_defs, comp_defs, conv_defs, main_def,  comp_calls, conv_calls, '}'])
 	
 	with open(filename, 'w') as f:
 		f.write(file_text)
