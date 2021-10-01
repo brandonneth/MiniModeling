@@ -11,37 +11,20 @@ def extract_kernel_data(filename):
 		d = json.load(f)
 		return d
 
-kernel_data = extract_kernel_data('demo_comp.info')
+kernel_datas = extract_kernel_data('demo_comp.info')
 
-kernel_number = 0
-nesting_order = kernel_data['NestingOrder']
-parameters = kernel_data['LambdaParameters']
-access_args = kernel_data['AccessArguments']
-layouts = kernel_data['DataLayouts']
-
-name_dim_pairs = [(t[0], len(t)-1) for t in access_args]
-
-variables = all_variable_names(1, name_dim_pairs)
-
-
-constraints = all_constraints(1, name_dim_pairs)
+array_details = []
+loop_depth = 0
+for kernel_data in kernel_datas:
+	accesses = kernel_data['AccessArguments']
+	array_details += [(a[0], len(a)-1) for a in accesses]
+	loop_depth = max(loop_depth, len(kernel_data['NestingOrder']))
+array_details = set(array_details)
+max_dimensionality = max([a[1] for a in array_details])
 
 
-write_eval_file('coef_eval_demo_comp.cpp', max_depth=len(nesting_order), max_dimensionality=2)
 
-
-objective_function = computation_objective_function([kernel_data])
-
-
-print('Variables:')
-for v in variables:
-	print(v)
-
-print("\nConstraints:")
-for c in constraints:
-	print(c)
-
-print("Objective Function: ", objective_function)
+write_eval_file('coef_eval_demo_comp.cpp', max_depth=loop_depth, max_dimensionality=max_dimensionality)
 
 
 model = create_model([kernel_data])

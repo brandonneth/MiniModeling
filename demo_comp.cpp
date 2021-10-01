@@ -34,10 +34,10 @@ using KPOL2 = KernelPolicy<
   >
 >;
 
-auto knl1 = make_kernel<KPOL>(make_tuple(RangeSegment(0,N0), RangeSegment(0,N1),RangeSegment(0,N2)), [=] (auto i, auto j, auto k) {
+auto knl1 = make_kernel<KPOL1>(make_tuple(RangeSegment(0,N0), RangeSegment(0,N1),RangeSegment(0,N2)), [=] (auto i, auto j, auto k) {
   a(i,k) += b(i,j) * c(j,k);
 });
-auto knl2 = make_kernel<KPOL>(make_tuple(RangeSegment(0,N0), RangeSegment(0,N1),RangeSegment(0,N2)), [=] (auto i, auto j, auto k) {
+auto knl2 = make_kernel<KPOL2>(make_tuple(RangeSegment(0,N0), RangeSegment(0,N1),RangeSegment(0,N2)), [=] (auto i, auto j, auto k) {
   a(i,k) += b(i,j) * c(j,k);
 });
 std::cout << "[\n";
