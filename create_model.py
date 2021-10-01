@@ -16,7 +16,7 @@ def optimal_conversion_coefficient_declarations(max_depth=3, max_dimensionality=
 			for out_layout in perms:
 				potential_coefficients = []
 				for nesting_order in perms:
-					potential_coefficients += [conversion_coefficient_name(in_layout, out_layout, nesting_order)]
+					potential_coefficients += [conversion_coefficient_name(in_layout, out_layout, nesting_order), conversion_coefficient_name(in_layout, out_layout, nesting_order)]
 
 				final_coef_name = optimal_conversion_coefficient_name(in_layout, out_layout)
 
