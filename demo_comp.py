@@ -6,12 +6,15 @@ from objective import computation_objective_function
 import json
 
 from create_model import create_model
-def extract_kernel_data(filename):
+def extract_kernel_datas(filename):
+	datas = []
 	with open(filename,'r') as f:
 		d = json.load(f)
-		return d
+		for key in d:
+			datas += [d[key]]
+		return datas
 
-kernel_datas = extract_kernel_data('demo_comp.info')
+kernel_datas = extract_kernel_datas('demo_comp.info')
 
 array_details = []
 loop_depth = 0

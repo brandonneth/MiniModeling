@@ -40,10 +40,12 @@ auto knl1 = make_kernel<KPOL1>(make_tuple(RangeSegment(0,N0), RangeSegment(0,N1)
 auto knl2 = make_kernel<KPOL2>(make_tuple(RangeSegment(0,N0), RangeSegment(0,N1),RangeSegment(0,N2)), [=] (auto i, auto j, auto k) {
   a(i,k) += b(i,j) * c(j,k);
 });
-std::cout << "[\n";
+std::cout << "{\n";
+std::cout << "\"knl1\":" ;
 std::cout << knl1.model_data();
 std::cout << ",\n";
+std::cout << "\"knl2\":" ;
 std::cout << knl2.model_data();
-std::cout << "]";
+std::cout << "}";
 
 }
