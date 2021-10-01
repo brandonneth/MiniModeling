@@ -2,7 +2,7 @@ import itertools
 from names import * 
 from constraints import all_constraints, all_variable_names
 from objective import objective_function
-from coefficients import optimal_conversion_coefficient_declarations
+
 
 def optimal_conversion_coefficient_declarations(max_depth=3, max_dimensionality=3):
 
