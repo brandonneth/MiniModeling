@@ -30,7 +30,7 @@ max_dimensionality = max([a[1] for a in array_details])
 write_eval_file('coef_eval_demo_comp.cpp', max_depth=loop_depth, max_dimensionality=max_dimensionality)
 
 
-model = create_model([kernel_data])
+model = create_model(kernel_datas)
 
 print("Writing Model File")
 with open('demo_comp_model.py', 'w') as f:
