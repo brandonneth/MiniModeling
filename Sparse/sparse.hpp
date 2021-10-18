@@ -11,8 +11,11 @@ struct CSR
     std::vector<std::size_t> col;
     std::vector<T> val;
 
-    CSR(std::size_t N) : rowptr(), col(), val(){
-        rowptr.reserve(N+1);
+    std::size_t r;
+    std::size_t c;
+
+    CSR(std::size_t r, std::size_t c) : rowptr(), col(), val(), r(r), c(c){
+        rowptr.reserve(r+1);
         rowptr.push_back(0);
         rowptr.push_back(0);
     }
@@ -45,10 +48,11 @@ struct CSR
             return;
         }
 
-        auto insert_index = 0;
+        
         auto start_of_row = rowptr.at(new_row);
         auto end_of_row = rowptr.at(new_row+1);
 
+        auto insert_index = start_of_row;
         //std::cout << "start and end of row: " << start_of_row << ", " << end_of_row << "\n" << std::flush;
         for(auto i = start_of_row; i < end_of_row; i++) {
             if(new_col == col[i]) {
@@ -84,6 +88,30 @@ struct CSR
         return 0;
     }
 
+    void random_delete(std::size_t r, std::size_t c) {
+        if(r > num_rows()){
+            return;
+        }
+        int col_index = -1;
+        for(auto i = rowptr[r]; i < rowptr[r+1]; i++) {
+            if(col[i] == c) {
+                col_index = i;
+            }
+        }
+        if(col_index == -1) {
+            return;
+        }
+    
+        auto col_iterator = col.begin() + col_index;
+        auto val_iterator = val.begin() + col_index;
+
+        col.erase(col_iterator);
+        val.erase(val_iterator);
+
+        for(auto i = r+1; i < rowptr.size(); i++) {
+            rowptr[i] -= 1;
+        }
+    }
     std::size_t row_of(std::size_t c) {
         int col_index = -1;
         for(int i = 0; i < col.size(); i++) {
@@ -131,7 +159,7 @@ CSR<T> read_csr(const std::string & filename) {
     std::size_t cols, rows, vals;
     file >> rows >> cols >> vals;
 
-    CSR<T> csr(rows);
+    CSR<T> csr(rows, cols);
     for(int i = 0; i < vals; i++) {
         std::size_t r, c;
         T v;
@@ -149,8 +177,10 @@ struct CSC
     std::vector<std::size_t> row;
     std::vector<T> val;
 
-    CSC(std::size_t N) : colptr(), row(), val(){
-        colptr.reserve(N+1);
+    std::size_t r;
+    std::size_t c;
+    CSC(std::size_t r, std::size_t c) : colptr(), row(), val(), r(r), c(c) {
+        colptr.reserve(c+1);
         colptr.push_back(0);
         colptr.push_back(0);
     }
@@ -179,9 +209,10 @@ struct CSC
             return;
         }
 
-        auto insert_index = 0;
+        
         auto start_of_col = colptr.at(new_col);
         auto end_of_col = colptr.at(new_col+1);
+        auto insert_index = start_of_col;
         for(auto i = start_of_col; i < end_of_col; i++) {
             if(new_row == row[i]) {
                 val[i] = new_val;
@@ -216,6 +247,31 @@ struct CSC
         return 0;
     }
 
+    void random_delete(std::size_t r, std::size_t c) {
+        if(c > num_cols()){
+            return;
+        }
+        int row_index = -1;
+        for(auto i = colptr[r]; i < colptr[r+1]; i++) {
+            if(row[i] == r) {
+                row_index = i;
+            }
+        }
+        if(row_index == -1) {
+            return;
+        }
+    
+        auto row_iterator = row.begin() + row_index;
+        auto val_iterator = val.begin() + row_index;
+
+        row.erase(row_iterator);
+        val.erase(val_iterator);
+
+        for(auto i = c+1; i < colptr.size(); i++) {
+            colptr[i] -= 1;
+        }
+
+    }
     std::size_t row_of(std::size_t c) {
         int r = -1;
         for(int i = colptr[c]; i < colptr[c+1]; i++) {
@@ -262,7 +318,7 @@ CSC<T> read_csc(const std::string & filename) {
     std::size_t cols, rows, vals;
     file >> rows >> cols >> vals;
 
-    CSC<T> csc(cols);
+    CSC<T> csc(rows, cols);
     for(int i = 0; i < vals; i++) {
         std::size_t r, c;
         T v;
