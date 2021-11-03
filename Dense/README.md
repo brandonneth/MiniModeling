@@ -710,3 +710,128 @@ For nesting order (2,0,1), arr1_0_0_1 should be matched to the coefficient (1,0)
 arr2_0_0_1 should be coefficient for (1,2) and arr2_0_1_0 should be (2,1).
 arr0_0_0_1 should be (2,0) and arr0_0_1_0 should be (0,2). This is what comes out.
 
+
+
+
+
+
+# 10.28.2021
+
+Now working on the creation of the interface for automatic layout manipulation for the user. The basic use looks like
+```
+auto computation = manipulate_layouts(knl1, knl2, knl3);
+```
+The execution function should be straightforward, just execute knl1, then conversion, then knl2, then conversion, then knl3.
+
+The hard part is figuring out what the conversion should be when constructing the computation. Let's run with an example to make this more concrete, as usual. 
+
+```
+using KPOL = KernelPolicy<
+  statement::For<0, loop_exec,
+    statement::For<1, loop_exec,
+      statement::For<2, loop_exec,
+        Lambda<0>
+      >
+    >
+  >
+>;
+
+VIEW2 a(_a, N, N);
+VIEW2 b(_b, N, N);
+VIEW2 c(_c, N, N);
+VIEW2 d(_d, N, N);
+VIEW2 e(_e, N, N);
+
+auto lambda1 = [=](auto i0, auto i1, auto i2) {
+  c(i0,i2) += a(i0,i1) * b(i1, i2);
+};
+
+auto lambda2 = [=](auto i0, auto i1, auto i2) {
+  e(i1,i0) += d(i0,i2) * c(i2,i0);
+};
+
+auto iterspace = make_tuple(RangeSegment(0,N), RangeSegment(0,N), RangeSegment(0,N));
+
+auto knl1 = make_kernel<KPOL>(iterspace, lambda1);
+
+auto knl2 = make_kernel<KPOL>(iterspace, lambda2);
+
+auto computation = manipulate_layout(knl1, knl2);
+
+computation();
+
+```
+
+So in this situation, we'd generally expect `c` to get a new layout. So what form does all the stuff take? 
+Important to note here that the structure of the final kernel thing needs to be teh same each time. So when passing in 2 kernels to `manipulate`, the same number of kernels needs to be in the outputted sequence. This indicates that we'll have to do all the conversions in a single kernel between each computation. So if we were manipulating both c and d, we would need to do both simultaneously. Furthermore, the kernel that we generate needs to be the same dimensionality each time, regardless of the dimension of the arrays we're manipulating. Thus, we'll probably want a forall that does a single iteration that makes a call to a function that does the transformation or transformations. Alternatively, we could have the user pass in the views they want considered for transformation as part of the function call. So for example, manipulate_layouts would be like
+```
+auto computation = manipulate_layouts(make_tuple(a,b,c,d,e), knl1, knl2);
+```
+This says they want us to consider all the views for possible layout changes. I think this method is probably more feasible, so we'll go with it now.
+
+```
+auto manipulate_layouts(auto views_to_consider, auto knl1, auto knl2) {
+
+  auto permutations = modelling_magic(views_to_consider, knl1, knl2);
+
+  auto conversion_knls = permute_views(views_to_consider, permutations);
+
+  auto all_kernels = tuple_cat(make_tuple(knl1), conversion_knls, make_tuple(knl2));
+  return chain(all_kernels);
+}
+```
+
+I'll leave the modelling magic for later. One thing I think I can tackle now is the permute_views. Or i guess, permute_view. Regardless of whether they are passed into the function or extracted from the view being changed or calculated using the other two pieces, we'll need to have 3 pieces of information: the current layout, the permutation to apply, and the final layout. WAIT. I can do it with just the output layout. The performance might suffer, but the conversion function is just:
+```
+auto permute_view(VIEW2 v, Layout2 l) {
+
+  auto converter = [=](auto unused) {
+    VIEW2 v2(...,l);
+    kernel<POL2D>(v.get_bounds(), [=](auto i, auto j) {
+      v2(i,j) = v(i,j);
+    });
+    auto tofree = v.get_data();
+    v.set_data(v2.get_data());
+    v.set_layout(l);
+    free(tofree);
+  }
+
+  return converter;
+}
+```
+And we'd call it with rangesegment of 0 to 1. 
+
+Then permute_views looks something like
+```
+template <typename... ViewTypes, typename... LayoutTypes, camp::idx_t...Is>
+auto permute_views(camp::tuple<ViewTypes...> views, camp::tuple<LayoutTypes...> layouts, camp::idx_seq<Is...>) {
+  return make_tuple(permute_view(camp::get<Is>(views), camp::get<Is>(layouts))...);
+}
+
+template <typename... ViewTypes, typename... LayoutTypes>
+auto permute_views(camp::tuple<ViewTypes...> views, camp::tuple<LayoutTypes...> layouts) {
+  auto seq = idx_seq_for<ViewTypes...>{};
+  return permute_views(views, layouts, seq);
+}
+```
+
+# 11.3.2021
+
+Thinking about the evaluation portion now. Given a computation, we need a way of generating the different possible implementations of that computation and timing them. 
+
+The procedure for a first pass at evaluation would look like this.
+
+Assumptions:
+- 2 kernels only with one conversion stage
+
+Procedure:
+1. (User) Specify the two kernels and which Views to consider changing
+2. (User) Pass those to function which generates the different possible implementations and names those implementations using a standard schema
+3. (User) Specify kernels and views to modeling tool 
+4. (User) Implement model-selected variant
+5. Compare performance of model-selected variant against the ordered series of all possible implementations 
+
+
+
+
+
